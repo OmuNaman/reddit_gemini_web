@@ -1,0 +1,26 @@
+/* static/styles.css */
+
+body {
+    background-color: #f8f9fa;
+}
+
+h1, h2 {
+    margin-bottom: 20px;
+}
+
+form, .progress, #status-text {
+    max-width: 600px;
+    margin: auto;
+}
+
+.container {
+    padding: 20px;
+}
+
+.progress {
+    height: 30px;
+}
+
+#progress-bar {
+    font-weight: bold;
+}

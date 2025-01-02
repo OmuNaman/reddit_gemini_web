@@ -1,0 +1,13 @@
+Flask
+google-generativeai
+gunicorn
+praw
+python-dotenv
+requests
+tqdm
+Flask-Login 
+Flask-WTF 
+Flask-Bcrypt 
+Flask-SQLAlchemy 
+Flask-Migrate
+email-validator

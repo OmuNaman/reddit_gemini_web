@@ -1,0 +1,160 @@
+<!-- templates/progress.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Processing...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Bootstrap CSS for styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Spinner Centering */
+        #loading-spinner {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            height: 4em;
+            width: 4em;
+            overflow: visible;
+            margin: auto;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+        }
+
+        /* Transparent background */
+        #loading-spinner::after {
+            content: ' ';
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Spinner styling */
+        #loading-spinner > div {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div id="loading-spinner">
+        <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <h2 class="text-center">Processing Your Request...</h2>
+        <p class="text-center">Please wait while we analyze the Reddit data.</p>
+        
+        <div class="progress mt-4">
+            <div id="progress-bar" class="progress-bar progress-bar-striped" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+        </div>
+
+        <div class="mt-3 text-center" id="status-text">
+            Starting...
+        </div>
+
+        <div class="mt-3">
+            <p><strong>Total Posts:</strong> <span id="total-posts">0</span></p>
+            <p><strong>Scraped Posts:</strong> <span id="scraped-posts">0</span></p>
+            <p><strong>Total Comments:</strong> <span id="total-comments">0</span></p>
+            <p><strong>Scraped Comments:</strong> <span id="scraped-comments">0</span></p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS for interactive components -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const taskId = "{{ task_id }}";
+        const progressBar = document.getElementById('progress-bar');
+        const statusText = document.getElementById('status-text');
+        const totalPostsElem = document.getElementById('total-posts');
+        const scrapedPostsElem = document.getElementById('scraped-posts');
+        const totalCommentsElem = document.getElementById('total-comments');
+        const scrapedCommentsElem = document.getElementById('scraped-comments');
+
+        function updateProgress() {
+            fetch(`/status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'In Progress' || data.status === 'Processing') {
+                        // Update status text
+                        statusText.innerText = data.progress;
+
+                        // Update counts
+                        totalPostsElem.innerText = data.total_posts;
+                        scrapedPostsElem.innerText = data.scraped_posts;
+                        totalCommentsElem.innerText = data.total_comments;
+                        scrapedCommentsElem.innerText = data.scraped_comments;
+
+                        // Calculate progress percentage
+                        let postProgress = data.total_posts > 0 ? (data.scraped_posts / data.total_posts) * 50 : 0; // 0-50%
+                        let commentProgress = data.total_comments > 0 ? (data.scraped_comments / data.total_comments) * 50 : 0; // 0-50%
+                        let totalProgress = postProgress + commentProgress;
+
+                        progressBar.style.width = `${totalProgress}%`;
+                        progressBar.innerText = `${Math.round(totalProgress)}%`;
+                        progressBar.classList.remove('progress-bar-animated', 'bg-danger');
+
+                        // Update background based on progress
+                        if (totalProgress < 50) {
+                            progressBar.classList.add('bg-info');
+                        } else if (totalProgress < 100) {
+                            progressBar.classList.add('bg-warning');
+                        }
+                    } else if (data.status === 'Completed') {
+                        progressBar.style.width = `100%`;
+                        progressBar.innerText = `100%`;
+                        progressBar.classList.remove('bg-info', 'bg-warning');
+                        progressBar.classList.add('bg-success');
+                        statusText.innerText = data.progress;
+
+                        // Redirect to download after a short delay
+                        setTimeout(() => {
+                            window.location.href = `/download/${taskId}`;
+                        }, 2000);
+                    } else if (data.status === 'Failed') {
+                        progressBar.style.width = `100%`;
+                        progressBar.innerText = `Failed`;
+                        progressBar.classList.remove('progress-bar-striped', 'bg-info', 'bg-warning');
+                        progressBar.classList.add('bg-danger');
+                        statusText.innerText = data.progress;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                });
+        }
+
+        // Initial call
+        updateProgress();
+
+        // Poll every 2 seconds
+        const interval = setInterval(() => {
+            fetch(`/status/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'Completed' || data.status === 'Failed') {
+                        clearInterval(interval);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                });
+
+            updateProgress();
+        }, 2000);
+    </script>
+</body>
+</html>
